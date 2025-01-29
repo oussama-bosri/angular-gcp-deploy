@@ -1,0 +1,50 @@
+name: Deploy Angular to GCP
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: npm install
+        working-directory: ./angular-gcp-deploy  # Path to your Angular project folder
+
+      - name: Build Angular App
+        run: npm run build -- --configuration=production
+        working-directory: ./angular-gcp-deploy  # Path to your Angular project folder
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configure Docker for GCP
+        run: gcloud auth configure-docker --quiet
+
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/angular-app:latest .
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/angular-app:latest
+        working-directory: ./angular-gcp-deploy  # Path to your Angular project folder
+
+      - name: Deploy to GCP VM
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_VM_USER }}@${{ secrets.GCP_VM_IP }} --command "
+          docker pull gcr.io/${{ secrets.GCP_PROJECT_ID }}/angular-app:latest &&
+          docker stop angular-app || true &&
+          docker rm angular-app || true &&
+          docker run -d --name angular-app -p 80:80 gcr.io/${{ secrets.GCP_PROJECT_ID }}/angular-app:latest
+          "
