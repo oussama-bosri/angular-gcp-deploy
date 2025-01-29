@@ -20,11 +20,11 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
-        working-directory: ./angular-gcp-deploy  # Path to your Angular project folder
+        working-directory: ./angular-gcp-deploy  # Assuming the Angular app is in this folder
 
       - name: Build Angular App
         run: npm run build -- --configuration=production
-        working-directory: ./angular-gcp-deploy  # Path to your Angular project folder
+        working-directory: ./angular-gcp-deploy  # Assuming the Angular app is in this folder
 
       - name: Authenticate with Google Cloud
         uses: google-github-actions/auth@v2
@@ -38,7 +38,7 @@ jobs:
         run: |
           docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/angular-app:latest .
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/angular-app:latest
-        working-directory: ./angular-gcp-deploy  # Path to your Angular project folder
+        working-directory: ./angular-gcp-deploy  # Assuming the Angular app is in this folder
 
       - name: Deploy to GCP VM
         run: |
