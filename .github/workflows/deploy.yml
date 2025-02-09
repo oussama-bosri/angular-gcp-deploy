@@ -26,6 +26,21 @@ jobs:
         run: npm run build -- --configuration=production
         working-directory: ./
 
+      - name: Authenticate with GCP
+        run: |
+          echo "${{ secrets.GCP_SA_KEY }}" > gcp-key.json
+          gcloud auth activate-service-account --key-file=gcp-key.json
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+          gcloud auth configure-docker
+
+      - name: Build Docker Image
+        run: |
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/angular-app:latest .
+
+      - name: Push Docker Image to GCR
+        run: |
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/angular-app:latest
+
       - name: Set up SSH Key
         run: |
           mkdir -p ~/.ssh
@@ -33,21 +48,11 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.GCP_VM_IP }} >> ~/.ssh/known_hosts
 
-      - name: Authenticate with GCP
-        run: |
-          cat <<EOF > gcp-key.json
-          ${{ secrets.GCP_SA_KEY }}
-          EOF
-          gcloud auth activate-service-account --key-file=gcp-key.json
-          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
-
       - name: Deploy to GCP VM
         run: |
           ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.GCP_VM_IP }} << 'EOF'
             # Authenticate Docker with GCR
-            cat <<EOF > gcp-key.json
-            ${{ secrets.GCP_SA_KEY }}
-            EOF
+            echo "${{ secrets.GCP_SA_KEY }}" > gcp-key.json
             gcloud auth activate-service-account --key-file=gcp-key.json
             gcloud auth configure-docker
             
